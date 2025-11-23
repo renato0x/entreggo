@@ -298,4 +298,103 @@ export class OrdersService {
         }
         return { status: order.status };
     }
+
+    async getAvailableOrders(params: {
+        latitude: number;
+        longitude: number;
+        radius: number;
+        driverId: string;
+        minPrice?: number;
+        maxPrice?: number;
+        orderBy?: 'distance' | 'price' | 'createdAt';
+    }) {
+        const { latitude, longitude, radius, driverId, minPrice, maxPrice, orderBy } = params;
+
+        // 1. Get driver's approved categories
+        const driverCategories = await this.entityManager.query(
+            `SELECT category_id FROM driver_categories WHERE driver_id = $1 AND status = 'approved'`,
+            [driverId]
+        );
+        const approvedCategoryIds = driverCategories.map((dc: any) => dc.category_id);
+
+        // 2. Build query
+        const query = this.entityManager
+            .createQueryBuilder(Order, 'order')
+            .leftJoinAndSelect('order.category', 'category')
+            .where('order.status = :status', { status: 'PENDING' });
+
+        // 3. Filter by category (if driver has categories, only show those. If order has no category, show to everyone?)
+        // Logic:
+        // - If order has NO category, everyone sees it.
+        // - If order HAS category, driver must be approved in it.
+        if (approvedCategoryIds.length > 0) {
+            query.andWhere(
+                '(order.categoryId IS NULL OR order.categoryId IN (:...approvedCategoryIds))',
+                { approvedCategoryIds }
+            );
+        } else {
+            // Driver has NO approved categories. Only show orders with NO category.
+            query.andWhere('order.categoryId IS NULL');
+        }
+
+        // 4. Filter by price
+        if (minPrice) {
+            query.andWhere('order.price >= :minPrice', { minPrice });
+        }
+        if (maxPrice) {
+            query.andWhere('order.price <= :maxPrice', { maxPrice });
+        }
+
+        // 5. Filter by location (Radius) - simplified using Haversine approximation or PostGIS if available
+        // Assuming pickupLocation is stored as JSONB { latitude, longitude }
+        // We'll fetch and filter in memory for simplicity if dataset is small, or use raw query for distance.
+        // Using raw SQL for distance filter is better for performance.
+        // Note: This assumes pickupLocation is a JSONB column.
+
+        // For now, let's return all pending orders matching criteria and filter distance in memory 
+        // (Not ideal for production with millions of orders, but fine for MVP)
+        const orders = await query.getMany();
+
+        const filteredOrders = orders.filter(order => {
+            if (!order.pickupLocation) return false;
+            const dist = this.calculateDistance(
+                latitude,
+                longitude,
+                order.pickupLocation.latitude,
+                order.pickupLocation.longitude
+            );
+            return dist <= radius;
+        });
+
+        // 6. Sort
+        return filteredOrders.sort((a, b) => {
+            if (orderBy === 'price') {
+                return b.price - a.price; // Higher price first
+            } else if (orderBy === 'createdAt') {
+                return b.createdAt.getTime() - a.createdAt.getTime(); // Newest first
+            } else {
+                // Distance
+                const distA = this.calculateDistance(latitude, longitude, a.pickupLocation.latitude, a.pickupLocation.longitude);
+                const distB = this.calculateDistance(latitude, longitude, b.pickupLocation.latitude, b.pickupLocation.longitude);
+                return distA - distB; // Closest first
+            }
+        });
+    }
+
+    private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        const R = 6371; // Radius of the earth in km
+        const dLat = this.deg2rad(lat2 - lat1);
+        const dLon = this.deg2rad(lon2 - lon1);
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const d = R * c; // Distance in km
+        return d;
+    }
+
+    private deg2rad(deg: number): number {
+        return deg * (Math.PI / 180);
+    }
 }

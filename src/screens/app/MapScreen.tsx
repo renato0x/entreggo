@@ -243,10 +243,24 @@ export const MapScreen = () => {
                             longitude: order.pickupLocation.longitude,
                         }}
                         title={`R$ ${order.price.toFixed(2)}`}
-                        description={order.pickupAddress}
-                        pinColor="#FF3B30"
+                        description={order.pickupLocation.address}
                         onPress={() => handleOrderPress(order)}
-                    />
+                    >
+                        <View style={[styles.markerContainer, { backgroundColor: theme.colors.surface }]}>
+                            <View style={[styles.markerIcon, { backgroundColor: theme.colors.primary }]}>
+                                <Ionicons
+                                    name={order.category?.icon as any || 'cube'}
+                                    size={16}
+                                    color="#FFFFFF"
+                                />
+                            </View>
+                            <View style={styles.markerPrice}>
+                                <Text style={[styles.markerPriceText, { color: theme.colors.text }]}>
+                                    R$ {order.price.toFixed(0)}
+                                </Text>
+                            </View>
+                        </View>
+                    </Marker>
                 ))}
             </MapView>
 
@@ -410,5 +424,37 @@ const styles = StyleSheet.create({
     },
     refreshButtonIcon: {
         fontSize: 24,
+    },
+    markerContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    markerIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    markerPrice: {
+        backgroundColor: 'white',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#eee',
+    },
+    markerPriceText: {
+        fontSize: 10,
+        fontWeight: 'bold',
     },
 });

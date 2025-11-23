@@ -16,9 +16,16 @@ export interface DriverProfile {
     // Vehicle Info
     vehicleModel?: string;
     vehiclePlate?: string;
+    vehicleType?: string;
     vehiclePhotoUrl?: string;
     vehicleStatus: DocumentStatus;
     vehicleRejectionReason?: string;
+
+    // Statistics
+    totalDeliveries?: number;
+    rating?: number;
+    totalEarnings?: number;
+    score?: number;
 
     // Overall Status
     approvalStatus: 'pending' | 'approved' | 'rejected' | 'incomplete';

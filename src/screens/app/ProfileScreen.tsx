@@ -6,7 +6,7 @@ import {
     ScrollView,
     TouchableOpacity,
     RefreshControl,
-    ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,16 +14,16 @@ import { useAuth, useUI } from '../../hooks';
 import { profileService } from '../../services/profileService';
 import { DriverProfile } from '../../types/profile';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Card } from '../../components/common/Card';
+import { useAuthStore } from '../../store/authStore';
 
 export const ProfileScreen = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
-    const { showError } = useUI();
+    const logout = useAuthStore((state) => state.logout);
+    const { showSuccess, showError } = useUI();
     const { theme } = useTheme();
 
     const [profile, setProfile] = useState<DriverProfile | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
@@ -32,13 +32,10 @@ export const ProfileScreen = () => {
 
     const loadProfile = async () => {
         try {
-            setIsLoading(true);
             const data = await profileService.getProfile();
             setProfile(data);
         } catch (error: any) {
-            showError('Erro', 'Não foi possível carregar o perfil');
-        } finally {
-            setIsLoading(false);
+            console.error('Erro ao carregar perfil', error);
         }
     };
 
@@ -48,53 +45,33 @@ export const ProfileScreen = () => {
         setIsRefreshing(false);
     };
 
-    const getStatusColor = () => {
-        switch (profile?.approvalStatus) {
-            case 'approved':
-                return theme.colors.success;
-            case 'rejected':
-                return theme.colors.error;
-            case 'pending':
-                return theme.colors.warning;
-            default:
-                return theme.colors.textTertiary;
-        }
+    const handleLogout = () => {
+        Alert.alert(
+            'Sair',
+            'Tem certeza que deseja sair?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Sair', style: 'destructive', onPress: logout },
+            ]
+        );
     };
 
-    const getStatusText = () => {
-        switch (profile?.approvalStatus) {
-            case 'approved':
-                return 'Aprovado';
-            case 'rejected':
-                return 'Rejeitado';
-            case 'pending':
-                return 'Em Análise';
-            default:
-                return 'Incompleto';
-        }
-    };
-
-    if (isLoading) {
-        return (
-            <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+    const MenuItem = ({ icon, label, onPress, badge, color }: any) => (
+        <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+            <View style={styles.menuItemLeft}>
+                <Ionicons name={icon} size={24} color={color || theme.colors.text} />
+                <Text style={[styles.menuItemLabel, { color: theme.colors.text }]}>{label}</Text>
             </View>
-        );
-    }
-
-    if (!profile) {
-        return (
-            <View style={[styles.errorContainer, { backgroundColor: theme.colors.background }]}>
-                <Ionicons name="alert-circle-outline" size={64} color={theme.colors.error} />
-                <Text style={[styles.errorText, { color: theme.colors.text }]}>
-                    Erro ao carregar perfil
-                </Text>
-                <TouchableOpacity onPress={loadProfile} style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}>
-                    <Text style={styles.retryButtonText}>Tentar Novamente</Text>
-                </TouchableOpacity>
+            <View style={styles.menuItemRight}>
+                {badge && (
+                    <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
+                        <Text style={styles.badgeText}>{badge}</Text>
+                    </View>
+                )}
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
             </View>
-        );
-    }
+        </TouchableOpacity>
+    );
 
     return (
         <ScrollView
@@ -102,176 +79,80 @@ export const ProfileScreen = () => {
             refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
             showsVerticalScrollIndicator={false}
         >
-            {/* Header with Settings Button */}
-            <View style={styles.topBar}>
-                <Text style={[styles.screenTitle, { color: theme.colors.text }]}>Perfil</Text>
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('Settings' as never)}
-                    style={[styles.settingsIconButton, { backgroundColor: theme.colors.surface }]}
-                >
-                    <Ionicons name="settings-outline" size={22} color={theme.colors.text} />
-                </TouchableOpacity>
+            {/* Header */}
+            <View style={styles.header}>
+                <View style={[styles.avatarContainer, { backgroundColor: theme.colors.primary + '20' }]}>
+                    <Text style={[styles.avatarText, { color: theme.colors.primary }]}>
+                        {profile?.name?.charAt(0).toUpperCase() || user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </Text>
+                </View>
+                <View style={styles.headerInfo}>
+                    <Text style={[styles.userName, { color: theme.colors.text }]}>
+                        {profile?.name || user?.name || 'Usuário'}
+                    </Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('EditProfile' as never)}>
+                        <Text style={[styles.userAction, { color: theme.colors.primary }]}>
+                            Editar perfil {'>'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            {/* Driver Info Card */}
-            <Card elevated style={{ marginBottom: theme.spacing.lg }}>
-                <View style={styles.driverHeader}>
-                    <View style={[styles.avatarLarge, { backgroundColor: theme.colors.primary }]}>
-                        <Text style={styles.avatarText}>
-                            {profile.name.charAt(0).toUpperCase()}
-                        </Text>
-                    </View>
-                    <View style={styles.driverInfo}>
-                        <Text style={[styles.driverName, { color: theme.colors.text }]}>
-                            {profile.name}
-                        </Text>
-                        <Text style={[styles.driverEmail, { color: theme.colors.textSecondary }]}>
-                            {user?.email}
-                        </Text>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20', borderColor: getStatusColor() }]}>
-                            <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-                            <Text style={[styles.statusText, { color: getStatusColor() }]}>
-                                {getStatusText()}
-                            </Text>
-                        </View>
-                    </View>
+            {/* Banner */}
+            <TouchableOpacity style={[styles.banner, { backgroundColor: theme.colors.surface }]}>
+                <View style={[styles.bannerIcon, { backgroundColor: theme.colors.primary }]}>
+                    <Ionicons name="star" size={24} color="#FFF" />
                 </View>
-            </Card>
+                <View style={styles.bannerContent}>
+                    <Text style={[styles.bannerTitle, { color: theme.colors.text }]}>Parceiro Entreggo</Text>
+                    <Text style={[styles.bannerSubtitle, { color: theme.colors.textSecondary }]}>
+                        Seus pedidos valem pontos e vantagens exclusivas
+                    </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
+            </TouchableOpacity>
 
-            {/* Stats Overview */}
-            <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-                ESTATÍSTICAS
-            </Text>
-            <View style={styles.statsGrid}>
-                <Card elevated style={styles.statCard}>
-                    <Ionicons name="bicycle" size={28} color={theme.colors.primary} />
-                    <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                        {profile.totalDeliveries || 0}
-                    </Text>
-                    <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-                        Entregas
-                    </Text>
-                </Card>
-
-                <Card elevated style={styles.statCard}>
-                    <Ionicons name="star" size={28} color={theme.colors.warning} />
-                    <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                        {profile.rating?.toFixed(1) || '0.0'}
-                    </Text>
-                    <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-                        Avaliação
-                    </Text>
-                </Card>
-
-                <Card elevated style={styles.statCard}>
-                    <Ionicons name="cash" size={28} color={theme.colors.success} />
-                    <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                        R$ {(profile.totalEarnings || 0).toFixed(0)}
-                    </Text>
-                    <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-                        Ganhos
-                    </Text>
-                </Card>
-
-                <Card elevated style={styles.statCard}>
-                    <Ionicons name="trophy" size={28} color={theme.colors.primary} />
-                    <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                        {profile.score || 0}
-                    </Text>
-                    <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-                        Pontos
-                    </Text>
-                </Card>
+            {/* Menu */}
+            <View style={styles.menuContainer}>
+                <MenuItem
+                    icon="notifications-outline"
+                    label="Notificações"
+                    onPress={() => navigation.navigate('NotificationSettings' as never)}
+                    badge={2}
+                />
+                <MenuItem
+                    icon="person-outline"
+                    label="Dados da conta"
+                    onPress={() => navigation.navigate('EditProfile' as never)}
+                />
+                <MenuItem
+                    icon="wallet-outline"
+                    label="Carteira"
+                    onPress={() => showSuccess('Em breve', 'Funcionalidade em desenvolvimento')}
+                />
+                <MenuItem
+                    icon="list-outline"
+                    label="Categorias de Entrega"
+                    onPress={() => navigation.navigate('Categories' as never)}
+                />
+                <MenuItem
+                    icon="settings-outline"
+                    label="Configurações"
+                    onPress={() => navigation.navigate('Settings' as never)}
+                />
+                <MenuItem
+                    icon="help-circle-outline"
+                    label="Ajuda"
+                    onPress={() => showSuccess('Em breve', 'Funcionalidade em desenvolvimento')}
+                />
             </View>
 
-            {/* Contact Information */}
-            <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-                INFORMAÇÕES DE CONTATO
-            </Text>
-            <Card elevated style={{ marginBottom: theme.spacing.lg }}>
-                <View style={styles.infoRow}>
-                    <Ionicons name="call-outline" size={20} color={theme.colors.primary} />
-                    <View style={styles.infoContent}>
-                        <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-                            Telefone
-                        </Text>
-                        <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                            {profile.phone || 'Não informado'}
-                        </Text>
-                    </View>
-                </View>
-
-                <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-
-                <View style={styles.infoRow}>
-                    <Ionicons name="mail-outline" size={20} color={theme.colors.primary} />
-                    <View style={styles.infoContent}>
-                        <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-                            Email
-                        </Text>
-                        <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                            {user?.email}
-                        </Text>
-                    </View>
-                </View>
-            </Card>
-
-            {/* Vehicle Information */}
-            {profile.vehicleType && (
-                <>
-                    <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-                        VEÍCULO
-                    </Text>
-                    <Card elevated style={{ marginBottom: theme.spacing.lg }}>
-                        <View style={styles.infoRow}>
-                            <Ionicons name="car-outline" size={20} color={theme.colors.primary} />
-                            <View style={styles.infoContent}>
-                                <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-                                    Tipo de Veículo
-                                </Text>
-                                <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                                    {profile.vehicleType}
-                                </Text>
-                            </View>
-                        </View>
-                    </Card>
-                </>
-            )}
-
-            {/* Quick Actions */}
-            <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-                AÇÕES RÁPIDAS
-            </Text>
-            <Card elevated style={{ marginBottom: theme.spacing.xl }}>
-                <TouchableOpacity
-                    style={styles.actionRow}
-                    onPress={() => navigation.navigate('History' as never)}
-                >
-                    <View style={styles.actionLeft}>
-                        <Ionicons name="time-outline" size={22} color={theme.colors.primary} />
-                        <Text style={[styles.actionLabel, { color: theme.colors.text }]}>
-                            Ver Histórico
-                        </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
-                </TouchableOpacity>
-
-                <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-
-                <TouchableOpacity
-                    style={styles.actionRow}
-                    onPress={() => navigation.navigate('Settings' as never)}
-                >
-                    <View style={styles.actionLeft}>
-                        <Ionicons name="settings-outline" size={22} color={theme.colors.primary} />
-                        <Text style={[styles.actionLabel, { color: theme.colors.text }]}>
-                            Configurações
-                        </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
-                </TouchableOpacity>
-            </Card>
-        </ScrollView>
+            <View style={styles.footer}>
+                <Text style={[styles.version, { color: theme.colors.textTertiary }]}>
+                    Versão 1.0.0
+                </Text>
+            </View>
+        </ScrollView >
     );
 };
 
@@ -279,162 +160,113 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    errorContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-    },
-    errorText: {
-        fontSize: 16,
-        marginTop: 16,
-        marginBottom: 24,
-    },
-    retryButton: {
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-    },
-    retryButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    topBar: {
+    header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 24,
         paddingTop: 60,
-        paddingBottom: 16,
+        paddingBottom: 24,
     },
-    screenTitle: {
-        fontSize: 32,
-        fontWeight: '700',
-    },
-    settingsIconButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    driverHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    avatarLarge: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+    avatarContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
     },
     avatarText: {
-        fontSize: 32,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        fontSize: 24,
+        fontWeight: 'bold',
     },
-    driverInfo: {
+    headerInfo: {
         flex: 1,
     },
-    driverName: {
-        fontSize: 22,
+    userName: {
+        fontSize: 20,
         fontWeight: '700',
         marginBottom: 4,
     },
-    driverEmail: {
+    userAction: {
         fontSize: 14,
-        marginBottom: 8,
-    },
-    statusBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        alignSelf: 'flex-start',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    statusDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginRight: 6,
-    },
-    statusText: {
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    sectionTitle: {
-        fontSize: 12,
-        fontWeight: '600',
-        marginBottom: 12,
-        marginLeft: 28,
-        marginTop: 8,
-        letterSpacing: 0.5,
-    },
-    statsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        paddingHorizontal: 16,
-        marginBottom: 16,
-    },
-    statCard: {
-        width: '47%',
-        margin: '1.5%',
-        padding: 16,
-        alignItems: 'center',
-    },
-    statValue: {
-        fontSize: 28,
-        fontWeight: '700',
-        marginTop: 8,
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 13,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 12,
-    },
-    infoContent: {
-        marginLeft: 16,
-        flex: 1,
-    },
-    infoLabel: {
-        fontSize: 12,
-        marginBottom: 4,
-    },
-    infoValue: {
-        fontSize: 16,
         fontWeight: '500',
+    },
+    banner: {
+        marginHorizontal: 24,
+        marginBottom: 24,
+        padding: 16,
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    bannerIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    bannerContent: {
+        flex: 1,
+        marginRight: 8,
+    },
+    bannerTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    bannerSubtitle: {
+        fontSize: 12,
+        lineHeight: 16,
+    },
+    menuContainer: {
+        paddingHorizontal: 24,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 16,
+    },
+    menuItemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    menuItemLabel: {
+        fontSize: 16,
+        marginLeft: 16,
+        fontWeight: '500',
+    },
+    menuItemRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    badge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 12,
+        marginRight: 8,
+    },
+    badgeText: {
+        color: '#FFF',
+        fontSize: 10,
+        fontWeight: 'bold',
     },
     divider: {
         height: 1,
         marginVertical: 8,
     },
-    actionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 12,
-    },
-    actionLeft: {
-        flexDirection: 'row',
+    footer: {
+        padding: 24,
         alignItems: 'center',
     },
-    actionLabel: {
-        fontSize: 16,
-        marginLeft: 12,
-        fontWeight: '500',
+    version: {
+        fontSize: 12,
     },
 });

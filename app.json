@@ -37,20 +37,20 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-
-"plugins": [
-  [
-    "expo-build-properties",
-    {
-      "android": {
-        "compileSdkVersion": 36,
-        "targetSdkVersion": 36,
-        "buildToolsVersion": "36.0.0",
-        "kotlinVersion": "2.1.20"
-      }
-    }
-  ]
-],
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0",
+            "minSdkVersion": 24,
+            "kotlinVersion": "2.1.20"
+          }
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "75f061c4-2730-4a61-96bc-ae270c8515cd"

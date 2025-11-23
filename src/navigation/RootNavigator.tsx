@@ -5,6 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 import { SettingsScreen } from '../screens/app/SettingsScreen';
+import { EditProfileScreen } from '../screens/app/EditProfileScreen';
+import { CategoriesScreen } from '../screens/app/CategoriesScreen';
 import { useAuthStore } from '../store/authStore';
 import { RootStackParamList } from '../types/navigation';
 import * as Linking from 'expo-linking';
@@ -33,6 +35,8 @@ const linking: LinkingOptions<RootStackParamList> = {
                 },
             },
             Settings: 'settings',
+            EditProfile: 'edit-profile',
+            Categories: 'categories',
             NotFound: '*',
         },
     },
@@ -69,6 +73,8 @@ export const RootNavigator = () => {
                     <>
                         <Stack.Screen name="App" component={AppNavigator} />
                         <Stack.Screen name="Settings" component={SettingsScreen} />
+                        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+                        <Stack.Screen name="Categories" component={CategoriesScreen} />
                     </>
                 ) : (
                     <Stack.Screen name="Auth" component={AuthNavigator} />

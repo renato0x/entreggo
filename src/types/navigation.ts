@@ -23,6 +23,8 @@ export type RootStackParamList = {
   DeliverySuccess: { orderId: string };
   NotificationSettings: undefined;
   Settings: undefined;
+  EditProfile: undefined;
+  Categories: undefined;
   NotFound: undefined;
 };
 

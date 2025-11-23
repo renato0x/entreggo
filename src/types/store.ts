@@ -8,33 +8,26 @@ export interface Location {
     accuracy?: number;
     speed?: number;
     heading?: number;
+    address?: string;
 }
 
 export interface LocationHistory {
-    id: string;
-    location: Location;
-    createdAt: string;
 }
 
-// Order Types
-export interface Order {
+export interface Category {
     id: string;
-    customerId: string;
-    customerName: string;
-    customerPhone: string;
-    pickupAddress: string;
-    pickupLocation: Location;
-    deliveryAddress: string;
-    deliveryLocation: Location;
-    distance: number;
-    price: number;
-    status: 'available' | 'accepted' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
-    createdAt: string;
-    acceptedAt?: string;
-    pickedUpAt?: string;
-    deliveredAt?: string;
-    otp?: string;
-    items?: OrderItem[];
+    name: string;
+    slug: string;
+    icon: string;
+    active: boolean;
+}
+
+export interface DriverCategory {
+    id: string;
+    categoryId: string;
+    driverId: string;
+    status: 'pending' | 'approved' | 'rejected';
+    category?: Category;
 }
 
 export interface OrderItem {
@@ -42,6 +35,23 @@ export interface OrderItem {
     name: string;
     quantity: number;
     price: number;
+}
+
+export interface Order {
+    id: string;
+    status: 'PENDING' | 'ACCEPTED' | 'IN_TRANSIT' | 'ARRIVED_AT_DELIVERY' | 'COMPLETED' | 'CANCELLED' | 'PROBLEM' | 'RETURNED';
+    price: number;
+    pickupLocation: Location;
+    deliveryLocation: Location;
+    driverId?: string;
+    establishmentId?: string;
+    customerPhone?: string;
+    categoryId?: string;
+    category?: Category;
+    createdAt: string;
+    acceptedAt?: string;
+    completedAt?: string;
+    items?: OrderItem[];
 }
 
 // Wallet Types

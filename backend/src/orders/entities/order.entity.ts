@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { Driver } from '../../drivers/entities/driver.entity';
 
 @Entity('orders')
@@ -40,6 +40,13 @@ export class Order {
 
     @Column({ nullable: true })
     establishmentId!: string;
+
+    @Column({ nullable: true })
+    categoryId: string;
+
+    @ManyToOne('Category', { nullable: true })
+    @JoinColumn({ name: 'categoryId' })
+    category: any;
 
     @Column({ nullable: true })
     customerPhone!: string;

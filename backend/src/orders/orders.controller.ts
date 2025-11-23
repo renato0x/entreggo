@@ -1,4 +1,4 @@
-import { Controller, Param, Body, Post, Get, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Param, Body, Post, Get, Req, UseGuards, HttpException, HttpStatus, Query } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { Request } from 'express';
 import { OrderAcceptedDto } from './dto/order-accepted.dto';
@@ -16,6 +16,28 @@ export class OrdersController {
         private readonly ordersService: OrdersService,
         private readonly ordersGateway: OrdersGateway,
     ) { }
+
+    @Get('available')
+    async getAvailableOrders(
+        @Query('latitude') latitude: number,
+        @Query('longitude') longitude: number,
+        @Query('radius') radius: number,
+        @Query('minPrice') minPrice: number,
+        @Query('maxPrice') maxPrice: number,
+        @Query('orderBy') orderBy: 'distance' | 'price' | 'createdAt',
+        @Req() req: Request,
+    ) {
+        const driverId = (req.user as any).id;
+        return this.ordersService.getAvailableOrders({
+            latitude: Number(latitude),
+            longitude: Number(longitude),
+            radius: Number(radius) || 10,
+            driverId,
+            minPrice: minPrice ? Number(minPrice) : undefined,
+            maxPrice: maxPrice ? Number(maxPrice) : undefined,
+            orderBy,
+        });
+    }
 
     @Post(':id/accept')
     async acceptOrder(
