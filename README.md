@@ -40,6 +40,4 @@ Comércio recebe o resultado da corrida
 - [Plano de validação](docs/04-validation-plan.md)
 - [Registro de decisões](docs/05-decisions-log.md)
 
-## Regra para começar a desenvolver
 
-Não iniciar código enquanto as decisões marcadas como abertas no registro não tiverem responsável, hipótese verificável e critério de decisão.
